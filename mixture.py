@@ -88,7 +88,7 @@ class Mixture:
                 )
 
         return (min_corner, max_corner)
-    
+
     def __add__(self, other: Mixture) -> Mixture:
         if self._virtual or other._virtual:
             raise ValueError("Allowed only for non-virtual mixtures.")
@@ -113,11 +113,13 @@ class Mixture:
         parts: list[list[float] | None],
         psd_sizes: list[list[float] | float],
         mix_parts: list[float],
+        mix_density: list[float] | None = None,
         material_labels: list[str],
-        distribute_mass: bool,
+        distribute_mass: bool = False,
         colors: list[tuple[float, float, float]] | None = None,
         seed: int = -1,
         disp: float = 0,
+        mix_by_mass: bool = False,
     ) -> None:
         """TODO"""
 
@@ -129,8 +131,16 @@ class Mixture:
             grow_axis = grow_axis.strip()
             if grow_axis not in {"x", "y", "z"}:
                 raise ValueError("Acceptable growAxis values: 'x', 'y' or 'z'.")
+
+        if mix_by_mass:
+            if mix_density is None:
+                raise ValueError(
+                    "'mix_density' argument is necessary with 'mix_by_mass=True' argument."
+                )
+
         if colors is None:
             colors = np.repeat(None, len(parts))
+
         if not (
             len(parts)
             == len(psd_sizes)
@@ -140,15 +150,16 @@ class Mixture:
             == len(labels)
         ):
             raise ValueError(
-                "Dimensions of 'parts', 'psdSizes', 'mix_parts', 'materials', 'labels' and 'colors' must be equals."
+                "Dimensions of 'parts', 'psdSizes', 'mix_parts', 'material_labels', 'labels' and 'colors' must be equals."
             )
 
         min_corner = Vector3(min_corner)
         max_corner = Vector3(max_corner)
 
-        grow_ind = {"x": 0, "y": 1, "z": 2}[grow_axis.lower()]
         work_indices = list(range(3))
-        work_indices.remove(grow_ind)
+        if grow_axis is not None:
+            grow_ind = {"x": 0, "y": 1, "z": 2}[grow_axis.lower()]
+            work_indices.remove(grow_ind)
 
         Mv_list = []
         for part, psd_size in zip(parts, psd_sizes):
@@ -170,15 +181,14 @@ class Mixture:
 
         max_diameter = np.max(np.hstack(psd_sizes))
         cell_size = max_diameter * (1 + 2 * disp)
-        mean_volume = np.mean(Mv_list)
 
         dims = np.floor((max_corner - min_corner) / cell_size)
-        if num is None:
-            num = int(dims.prod())
-        else:
-            dims[grow_ind] = np.ceil(num / np.prod([dims[i] for i in work_indices]))
         dims = list(map(int, dims))
-        max_corner[grow_ind] = min_corner[grow_ind] + dims[grow_ind] * cell_size
+        if num is None:
+            num = int(np.prod(dims))
+        else:
+            dims[grow_ind] = int(np.ceil(num / np.prod([dims[i] for i in work_indices])))
+            max_corner[grow_ind] = min_corner[grow_ind] + dims[grow_ind] * cell_size
 
         init_coord = min_corner + Vector3(np.repeat(cell_size * 0.5, 3))
         coords = [
@@ -191,9 +201,14 @@ class Mixture:
         ]
         shuffle(coords)
 
-        mix_parts = [p * mean_volume / mv for p, mv in zip(mix_parts, Mv_list)]
+        if mix_by_mass:
+            Mm_list = [mv * d for d, mv in zip(mix_density, Mv_list)]
+            mix_parts = [p / mm for p, mm in zip(mix_parts, Mm_list)]
+        else:
+            mix_parts = [p / mv for p, mv in zip(mix_parts, Mv_list)]
+            print(f"{mix_parts=}")
         sum_parts = np.sum(mix_parts)
-        mix_parts = [p * (1 / sum_parts) for p in mix_parts]
+        mix_parts = [p / sum_parts for p in mix_parts]
         mix_nums = [int(np.floor(i * num)) for i in mix_parts]
 
         centers_list = np.split(coords, np.cumsum(mix_nums))
