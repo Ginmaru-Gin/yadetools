@@ -23,6 +23,7 @@ class Mixture:
     all_ids -- list of all spheres indices (only for 'non-virtual')
     ids     -- dictionary that represents lists of spheres indices by packages (only for 'non-virtual')
     """
+    # variables Mx -- mathematical expectation of 'x'
 
     _packs: list[tuple[pack.SpherePack, str, tuple[float, float, float], str]]
     _ids: dict[str : set[int]]
@@ -61,8 +62,8 @@ class Mixture:
     def aabb(self) -> tuple[Vector3, Vector3]:
         """Geometric bounds of object"""
 
-        min_corner = Vector3.Zero
-        max_corner = Vector3.Zero
+        min_corner = Vector3(1, 1, 1) * np.inf
+        max_corner = Vector3(1, 1, 1) * -np.inf
         axis = [0, 1, 2]
         for ax in axis:
             if self._virtual:
