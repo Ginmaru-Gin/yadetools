@@ -4,7 +4,7 @@ from typing import Callable
 from yade import O, utils
 
 
-DEBUG = True
+DEBUG = False
 
 
 sphere_Vr = lambda r: 4 / 3 * np.pi * r**3
@@ -28,7 +28,13 @@ def staticStateChecker(
         static_degree = 0.05
 
     allowed_displacement = (
-        np.sum([O.bodies[id].shape.radius for id in ids if isinstance(O.bodies[id].shape, utils.Sphere)])
+        np.sum(
+            [
+                O.bodies[id].shape.radius
+                for id in ids
+                if isinstance(O.bodies[id].shape, utils.Sphere)
+            ]
+        )
         * static_degree
     )
 
@@ -66,3 +72,14 @@ def staticStateChecker(
         return O.time - timing > static_time
 
     return checker
+
+
+def get_contact_area(ids: list[int]):
+    intrs = np.hstack([O.bodies[id].intrs() for id in ids])
+    sphere_ids = [
+        i.id2
+        for i in intrs
+        if O.bodies[i.id2] is not None and isinstance(O.bodies[i.id2].shape, utils.Sphere)
+    ]
+    contact_area = np.sum([np.pi * O.bodies[id].shape.radius ** 2 for id in sphere_ids])
+    return contact_area
