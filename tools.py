@@ -79,7 +79,15 @@ def get_contact_area(ids: list[int]):
     sphere_ids = [
         i.id2
         for i in intrs
-        if O.bodies[i.id2] is not None and isinstance(O.bodies[i.id2].shape, utils.Sphere)
+        if O.bodies[i.id2] is not None
+        and isinstance(O.bodies[i.id2].shape, utils.Sphere)
     ]
     contact_area = np.sum([np.pi * O.bodies[id].shape.radius ** 2 for id in sphere_ids])
     return contact_area
+
+
+def filterInBounds(bounds, ids):
+    in_bounds = lambda body: np.prod(
+        [bounds[0][i] < body.state.pos[i] < bounds[1][i] for i in range(3)]
+    )
+    return [id for id in ids if in_bounds(O.bodies[id])]
