@@ -61,15 +61,19 @@ def staticStateChecker(
         if O.time > timeout:
             print(f"staticChecker: timeout ({O.time})")
             return True
+        
+        if O.time - timing < static_time:
+            return False
 
         positions = np.array([O.bodies[id].state.pos for id in ids])
-        displacement = np.sum(np.abs(positions - prev_positions))
-        if displacement > allowed_displacement:
-            timing = O.time
+        disp_vectors = map(utils.Vector3, np.abs(positions - prev_positions))
+        displacement = sum(v.norm() for v in disp_vectors)
+        if displacement <= allowed_displacement:
+            return True
+        timing = O.time
         prev_positions = positions
         if DEBUG:
             print(f"{displacement=}")
-        return O.time - timing > static_time
 
     return checker
 
