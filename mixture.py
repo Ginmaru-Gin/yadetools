@@ -23,6 +23,7 @@ class Mixture:
     all_ids -- list of all spheres indices (only for 'non-virtual')
     ids     -- dictionary that represents lists of spheres indices by packages (only for 'non-virtual')
     """
+
     # variables Mx -- mathematical expectation of 'x'
 
     _packs: list[tuple[pack.SpherePack, str, tuple[float, float, float], str]]
@@ -188,7 +189,9 @@ class Mixture:
         if num is None:
             num = int(np.prod(dims))
         else:
-            dims[grow_ind] = int(np.ceil(num / np.prod([dims[i] for i in work_indices])))
+            dims[grow_ind] = int(
+                np.ceil(num / np.prod([dims[i] for i in work_indices]))
+            )
             max_corner[grow_ind] = min_corner[grow_ind] + dims[grow_ind] * cell_size
 
         init_coord = min_corner + Vector3(np.repeat(cell_size * 0.5, 3))
@@ -316,5 +319,19 @@ class Mixture:
         """TODO"""
         if self._virtual:
             raise ValueError("Allowed only for non-virtual mixtures.")
+        if not ids:
+            return
         for label in self._ids:
             self._ids[label] = [id for id in self._ids[label] if not id in ids]
+
+    @staticmethod
+    def substance(label, mix_part, part, psd_size, density, mat_label, color):
+        return {
+            "label": label,
+            "mix_part": mix_part,
+            "part": part,
+            "psd_size": psd_size,
+            "density": density,
+            "mat_label": mat_label,
+            "color": color,
+        }
