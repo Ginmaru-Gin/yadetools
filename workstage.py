@@ -46,6 +46,6 @@ def load_params(filename:str, classes: list, exclude_attrs: dict):
             dump = json.loads(dump)
             cls = next(cls for cls in classes if cls.__name__ == cls_name)
             for k, v in dump.items():
-                if k not in exclude_attrs:
+                if cls not in exclude_attrs.keys() or k not in exclude_attrs[cls]:
                     setattr(cls, k, v)
     
