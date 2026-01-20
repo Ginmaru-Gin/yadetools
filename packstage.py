@@ -2,6 +2,7 @@ import os
 import sys
 from subprocess import Popen
 from time import sleep
+from typing import Dict
 from yade import O, utils
 from yade.utils import Vector3
 
@@ -22,15 +23,15 @@ def create_box(center: Vector3, size: Vector3, material, mask: int):
 
 
 def create_spheres(
-    center: Vector3,
-    size: Vector3,
-    num: int,
-    substances: list[dict],
-    *,
-    grow_axis: str = "z",
-    disp: float = 0,
-    mix_by_mass: bool = True,
-    seed: int = -1,
+        center: Vector3,
+        size: Vector3,
+        num: int,
+        substances: list[dict],
+        *,
+        grow_axis: str = "z",
+        disp: float = 0,
+        mix_by_mass: bool = True,
+        seed: int = -1,
 ) -> Mixture:
     mixture = Mixture()
     mixture.generate(
@@ -52,7 +53,8 @@ def create_spheres(
     return mixture
 
 
-def run_parallel_layers(number: int, worker_number: int, yade_command: str, particles_per_layer: int, pack_id: int = 0) -> list[str]:
+def run_parallel_layers(number: int, worker_number: int, yade_command: str, particles_per_layer: int,
+                        pack_id: int = 0) -> list[str]:
     filenames = [f"spheres_{pack_id}_{i}" for i in range(number)]
     log_filenames = {f + ".log" for f in filenames}
     for filename in filenames:
@@ -68,6 +70,39 @@ def run_parallel_layers(number: int, worker_number: int, yade_command: str, part
                 sys.argv[0],
                 filename,
                 str(particles_per_layer),
+                ">",
+                log_file,
+            ]
+        )
+        for filename, log_file in zip(filenames, log_filenames)
+    ]
+    for proc in procs:
+        while proc.poll() is None:
+            sleep(1)
+        proc.terminate()
+
+    return filenames
+
+
+def run_layers(object: str, particles: int, args: Dict[str, str], number: int, pack_id: int, workers: int,
+               yade_command: str):
+    filenames = [f"spheres_{'interlayer_' if '--interlayer' in args else ''}{pack_id}_{i}" for i in range(number)]
+    log_filenames = {f + ".log" for f in filenames}
+    for filename in filenames:
+        try:
+            os.remove(filename)
+        except FileNotFoundError:
+            pass
+    procs = [
+        Popen(
+            [
+                yade_command,
+                "-nxj " + str(workers // number),
+                sys.argv[0],
+                object,
+                str(particles),
+                *[i for kv in args.items() for i in kv if i],
+                "--child", filename,
                 ">",
                 log_file,
             ]
